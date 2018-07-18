@@ -6,11 +6,12 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include <Eigen/SVD>
-#include <math_type_define.h>
+//#include <math_type_define.h>
 
 using namespace Eigen;
 using namespace std;
 
+typedef double	rScalar;
 namespace Eigen
 {
   typedef Matrix<rScalar, 3, 1>	Vector3D;
