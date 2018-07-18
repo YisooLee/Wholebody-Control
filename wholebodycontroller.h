@@ -1,7 +1,7 @@
 #ifndef WHOLEBODYCONTROLLER_H
 #define WHOLEBODYCONTROLLER_H
 
-//#define EIGEN_3_3 //if the eigen version is latest version after 3.3, use this definition
+//#define EIGEN_3_3 //if the eigen version is latest version (more than 3.3)
 
 #include <iostream>
 #include <Eigen/Dense>
