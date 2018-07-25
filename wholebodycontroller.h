@@ -6,7 +6,6 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include <Eigen/SVD>
-//#include <math_type_define.h>
 
 using namespace Eigen;
 using namespace std;
