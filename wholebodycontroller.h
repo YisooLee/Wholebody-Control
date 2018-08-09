@@ -39,10 +39,11 @@ public:
   void calculateContactSpaceInvDynamics();
   void calculateGravityCoriolisCompensationTorque(); //Gravity & Coriolis/centrifugal compensation torque
   void calculateContactConstrainedTaskJacobian();
+  void calculateContactConstrainedNullSpaceTaskJacobian(const MatrixXd &N_k_T);
   void calculateSVDofWeightingMatrix();
   void calculateNullSpaceJacobian();
   void calculateContactWrenchLocalContactFrame(const VectorXd &Torque);
-  void calculateContactWrenchRedistributionTorque(const MatrixXd &Scw, const VectorXd &_Fc_compensate_d, VectorXd &Torque);  
+  void calculateContactWrenchRedistributionTorque(const MatrixXd &Scw, const VectorXd &_Fc_compensate_d, VectorXd &Torque);
 
   HTransform _globalT; //HTransform Matrix 4x3, upper 3x3 is rotation, lower 1x3 is position //(matrix 4x4), .linear() - rotation matrix 3x3, .translation() - position vector 3x1
   VectorXd _globalG;

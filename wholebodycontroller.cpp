@@ -275,9 +275,9 @@ MatrixXd CWholeBodyControl::GenInvSemiPosDef(const int &ContactState, const Matr
 
     if(ContactState == 0) //double contact
     {
-      tmp_inv = pinv_QR(tmp);
+      //tmp_inv = pinv_QR(tmp);
       //cout << "QR" <<endl <<tmp_inv <<endl<<endl;
-      //tmp_inv = pinv_SVD(tmp,1.e-10);
+      tmp_inv = pinv_SVD(tmp,1.e-10);
       //cout << "SVD" <<endl <<tmp_inv <<endl<<endl;
     }
     else if(ContactState == 1 || ContactState == 2) //single contact
@@ -286,8 +286,8 @@ MatrixXd CWholeBodyControl::GenInvSemiPosDef(const int &ContactState, const Matr
     }
     else //else.. require for arm contact for humanods
     {
-      //tmp_inv = pinv_SVD(tmp,1.e-10);
-      tmp_inv = pinv_QR(tmp);
+      tmp_inv = pinv_SVD(tmp,1.e-10);
+      //tmp_inv = pinv_QR(tmp);
     }
 
     MatrixXd inv_S1(S_val_n,S_val_n);
@@ -516,10 +516,9 @@ void CWholeBodyControl::calculateContactSpaceInvDynamics()
     _lambda_c.resize(_Jcrow, _Jcrow);
     _lambda_c.setZero();
     if(_ContactState == 0) //two foot contact
-    {
-      //_lambda_c = OneSidedInverse(Tmp_c);
-      //_lambda_c = pinv_SVD(Tmp_c,1.e-10);
-      _lambda_c = pinv_QR(Tmp_c);
+    {      
+      _lambda_c = pinv_SVD(Tmp_c,1.e-10);
+      //_lambda_c = pinv_QR(Tmp_c);
     }
     else if(_ContactState == 1 || _ContactState == 2) //one foot contact
     {
@@ -528,8 +527,8 @@ void CWholeBodyControl::calculateContactSpaceInvDynamics()
     else
     {
       //_lambda_c = OneSidedInverse(Tmp_c);//calculate lamba c, À§ÀÇ Tmp_cgžŠ inverse(pseudo inverse »ç¿ë)
-      //_lambda_c = pinv_SVD(Tmp_c,1.e-10);
-      _lambda_c = pinv_QR(Tmp_c);
+      _lambda_c = pinv_SVD(Tmp_c,1.e-10);
+      //_lambda_c = pinv_QR(Tmp_c);
     }
 
     _Jc_bar_T.resize(_Jcrow, _Jccol);
@@ -584,18 +583,19 @@ void CWholeBodyControl::calculateGravityCoriolisCompensationTorque()
 
   if(_ContactState == 0) //two foot contact
   {    
-    //_LambdaJointSpace = pinv_SVD(Tmpg,1.e-10);
-    _LambdaJointSpace = pinv_QR(Tmpg);
+    _LambdaJointSpace = pinv_SVD(Tmpg,1.e-10);
+    //_LambdaJointSpace = pinv_QR(Tmpg);
   }
   else if(_ContactState == 1 || _ContactState == 2) //single support
   {
     _LambdaJointSpace = Tmpg.inverse();
+
   }
   else //±× ¿ÜÀÇ °æ¿ì, ŸÈÀüÀ» À§ÇØ pinv ŒöÇà
   {
     //_LambdaJointSpace = OneSidedInverse(Tmpg);
-    //_LambdaJointSpace = pinv_SVD(Tmpg,1.e-10);
-    _LambdaJointSpace = pinv_QR(Tmpg);
+    _LambdaJointSpace = pinv_SVD(Tmpg,1.e-10);
+    //_LambdaJointSpace = pinv_QR(Tmpg);
   }
   _Jjoint_bar_T.setZero();
   _Jjoint_bar_T = _LambdaJointSpace*Jg*_globalAinv*(Id_tot-_Pc);
@@ -633,11 +633,9 @@ void CWholeBodyControl::calculateContactConstrainedTaskJacobian()
   _Lambda.resize(_Jrow, _Jrow);
   _Lambda.setZero();
 
-  //_Lambda = Tmp.inverse();
-  //cout << "inv" <<endl <<_Lambda <<endl<<endl;
-  _Lambda = pinv_QR(Tmp);
+  //_Lambda = pinv_QR(Tmp);
   //cout << "QR" <<endl <<_Lambda <<endl<<endl;
-  //_Lambda = pinv_SVD(Tmp,1.e-10);
+  _Lambda = pinv_SVD(Tmp,1.e-10);
   //cout << "SVD" <<endl <<_Lambda <<endl<<endl;
 
   _J_bar_T.resize(_Jrow, _JOINTNUM+6);
@@ -651,6 +649,39 @@ void CWholeBodyControl::calculateContactConstrainedTaskJacobian()
 
   _J_k_T.resize(_JOINTNUM,_Jrow);
   _J_k_T = GenInvSemiPosDef(_ContactState, J_bar_T_S_k_T,_W); //if W is semi positive definite, W°¡ positive definiteÀÏ ¶§µµ »ç¿ë °¡ŽÉ
+
+  _J_k_T_Lambda.resize(_JOINTNUM,_Jrow);
+  _J_k_T_Lambda = _J_k_T*_Lambda;
+}
+
+void CWholeBodyControl::calculateContactConstrainedNullSpaceTaskJacobian(const MatrixXd &N_k_T)
+{
+  MatrixXd Id_tot(_JOINTNUM+6, _JOINTNUM+6);//form Identity matrix for total joints including virtual joints
+  Id_tot.setIdentity();
+
+  //////////////////////////////////////// calculate transpose J
+  MatrixXd J_T(_JOINTNUM+6, _Jrow);
+  J_T = _J.transpose();
+
+  //////////////////////////////////////// claculate J bar transpose
+  MatrixXd Tmp(_Jrow, _Jrow);
+  Tmp = _J*_globalAinv*(Id_tot-_Pc)*J_T;
+
+  _Lambda.resize(_Jrow, _Jrow);
+  _Lambda.setZero();
+  _Lambda = pinv_SVD(Tmp,1.e-10);
+
+  _J_bar_T.resize(_Jrow, _JOINTNUM+6);
+  _J_bar_T = _Lambda*_J*_globalAinv*(Id_tot-_Pc);
+  ///////////////////////////////////////////////////////////calculate Jk transpose
+
+  MatrixXd J_bar_T_S_k_T_N_k_T(_Jrow,_JOINTNUM);
+  J_bar_T_S_k_T_N_k_T = _J_bar_T*_S_k_T*N_k_T;
+
+  _W = _S_k*_globalAinv*(Id_tot-_Pc)*_S_k_T;
+
+  _J_k_T.resize(_JOINTNUM,_Jrow);
+  _J_k_T = GenInvSemiPosDef(_ContactState, J_bar_T_S_k_T_N_k_T,_W); //if W is semi positive definite, W°¡ positive definiteÀÏ ¶§µµ »ç¿ë °¡ŽÉ
 
   _J_k_T_Lambda.resize(_JOINTNUM,_Jrow);
   _J_k_T_Lambda = _J_k_T*_Lambda;
@@ -771,8 +802,8 @@ void CWholeBodyControl::calculateContactWrenchRedistributionTorque(const MatrixX
   }
   else
   {
-    //tmp_inv = pinv_SVD(tmp,1.e-10);
-    tmp_inv = pinv_QR(tmp);
+    tmp_inv = pinv_SVD(tmp,1.e-10);
+    //tmp_inv = pinv_QR(tmp);
   }
 
   VectorXd alpha(V2col);
